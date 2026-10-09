@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark Mode tokens (default) */
+  --color-brand-dark: #0B0B0C;
+  --color-brand-surface: #141416;
+  --color-brand-card: #1B1B1F;
+  --color-brand-border: #2A2A2E;
+  --color-brand-border-light: #3A3A40;
+  --color-brand-text: #F5F5F5;
+  --color-brand-muted: #A1A1AA;
+  color-scheme: dark;
+}
+
+html.light {
+  /* Light Mode tokens: crisp, high-contrast, modern clean atelier styling */
+  --color-brand-dark: #F3F4F6;
+  --color-brand-surface: #FFFFFF;
+  --color-brand-card: #F9FAFB;
+  --color-brand-border: #E5E7EB;
+  --color-brand-border-light: #D1D5DB;
+  --color-brand-text: #111827;
+  --color-brand-muted: #4B5563;
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-brand-dark);
+  color: var(--color-brand-text);
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-brand-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-brand-border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FF5A1F;
+}
+
+/* Micro animations */
+.transition-smooth {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
