@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import SectionHeading from '../components/SectionHeading';
 import ContactInfo from '../components/ContactInfo';
 import Button from '../components/Button';
-import { Send, CheckCircle2, MessageSquare, AlertCircle, PhoneCall } from 'lucide-react';
+import { Send, CheckCircle2, AlertCircle, PhoneCall, Image as ImageIcon, X, UploadCloud, Loader2 } from 'lucide-react';
 import { siteConfig } from '../config/siteConfig';
+import { contactService } from '../services/contactService';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -14,8 +15,11 @@ export default function Contact() {
     message: '',
   });
 
+  const [selectedImages, setSelectedImages] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [ticketId, setTicketId] = useState('');
 
   const validate = () => {
     const newErrors = {};
@@ -25,12 +29,34 @@ export default function Contact() {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Format email tidak valid.';
     }
-    if (!formData.subject.trim()) newErrors.subject = 'Subjek pesan wajib diisi.';
-    if (!formData.message.trim()) newErrors.message = 'Pesan wajib diisi.';
+    if (!formData.subject.trim()) newErrors.subject = 'Subjek permohonan wajib diisi.';
+    if (!formData.message.trim()) newErrors.message = 'Deskripsi kerusakan kendaraan wajib diisi.';
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const newImages = files.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      name: file.name,
+    }));
+
+    setSelectedImages((prev) => [...prev, ...newImages].slice(0, 4)); // Maks 4 foto
+  };
+
+  const removeImage = (index) => {
+    setSelectedImages((prev) => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -39,7 +65,28 @@ export default function Contact() {
     }
 
     setErrors({});
-    setIsSubmitted(true);
+    setIsLoading(true);
+
+    try {
+      // Siapkan payload form data untuk kesiapan backend (multipart/form-data)
+      const payload = new FormData();
+      payload.append('name', formData.name);
+      payload.append('email', formData.email);
+      payload.append('phone', formData.phone);
+      payload.append('subject', formData.subject);
+      payload.append('message', formData.message);
+      selectedImages.forEach((img, i) => {
+        payload.append(`photos_${i}`, img.file);
+      });
+
+      const response = await contactService.submitContact(formData);
+      setTicketId(response.ticketId || `WB-${Math.floor(100000 + Math.random() * 900000)}`);
+      setIsSubmitted(true);
+    } catch {
+      setErrors({ form: 'Terjadi kendala saat mengirimkan pesan. Silakan coba kembali.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -60,21 +107,21 @@ export default function Contact() {
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-brand-orange mb-3">
               <span className="w-2 h-2 rounded-full bg-brand-orange" />
-              Hubungi Wendy Autobody
+              Kontak & Lokasi Workshop
             </span>
             <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-brand-text tracking-tight uppercase leading-[1.1]">
-              Get in Touch with <br />
-              <span className="text-brand-orange">Our Repair Team</span>
+              Hubungi Wendy Autobody. <br />
+              <span className="text-brand-orange">Siap Melayani Kendaraan Anda.</span>
             </h1>
             <p className="mt-6 text-sm sm:text-base md:text-lg text-brand-muted leading-relaxed">
-              Konsultasikan kerusakan bodi, penyok, atau kebutuhan cat kendaraan Anda. Kami siap memberikan informasi awal dan menyambut kunjungan Anda di workshop.
+              Konsultasikan kerusakan panel bodi, baret cat, atau restorasi mobil Anda dengan teknisi spesialis kami di Padang. Estimasi transparan dan hasil presisi berstandar spray booth oven.
             </p>
           </div>
         </div>
       </section>
 
       {/* =========================================
-          CONTACT SECTION (FORM + INFO)
+          CONTACT FORM & DETAILS SECTION
          ========================================= */}
       <section className="py-20 bg-brand-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -83,50 +130,61 @@ export default function Contact() {
             <div className="lg:col-span-7 bg-brand-surface border border-brand-border p-6 sm:p-10">
               <div className="mb-8">
                 <span className="text-xs font-bold uppercase tracking-wider text-brand-orange">
-                  Kirim Pesan
+                  Formulir Konsultasi & Estimasi
                 </span>
                 <h2 className="text-2xl font-extrabold text-brand-text uppercase mt-1">
-                  Formulir Konsultasi
+                  Kirim Data Kerusakan Mobil
                 </h2>
                 <p className="text-xs text-brand-muted mt-2">
-                  Lengkapi data berikut untuk mengirim pertanyaan mengenai kondisi bodi atau cat mobil Anda.
+                  Lengkapi data berikut beserta foto bodi kendaraan untuk mendapatkan estimasi pengerjaan awal dari workshop.
                 </p>
               </div>
 
               {isSubmitted ? (
-                <div className="p-8 bg-brand-card border border-brand-orange/40 text-center flex flex-col items-center">
+                <div className="p-8 bg-brand-card border border-brand-orange/40 text-center flex flex-col items-center animate-fadeIn">
                   <div className="w-12 h-12 rounded-full bg-brand-orange/10 border border-brand-orange text-brand-orange flex items-center justify-center mb-4">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-brand-orange bg-brand-surface px-3 py-1 border border-brand-border mb-2">
+                    Tiket: {ticketId}
+                  </span>
                   <h3 className="text-lg font-bold text-brand-text mb-2">
-                    Pesan Simulasi Berhasil Dikirim
+                    Formulir Berhasil Diterima
                   </h3>
                   <p className="text-xs sm:text-sm text-brand-muted max-w-md leading-relaxed mb-6">
-                    Terima kasih telah menghubungi Wendy Autobody. Karena website ini saat ini berbasis frontend demo, pesan Anda telah tervalidasi secara lokal.
+                    Terima kasih, Bapak/Ibu {formData.name}. Tim teknisi Wendy Autobody akan meninjau rincian kondisi mobil Anda. Anda juga dapat melanjutkan chat langsung ke WhatsApp dengan rincian tiket ini.
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <Button
-                      href={`https://wa.me/${siteConfig.contact.whatsappClean}?text=Halo%20Wendy%20Autobody,%20saya%20${encodeURIComponent(formData.name)}%20ingin%20konsultasi%20mengenai%20${encodeURIComponent(formData.subject)}.`}
+                      href={`https://wa.me/${siteConfig.contact.whatsappClean}?text=Halo%20Wendy%20Autobody,%20saya%20${encodeURIComponent(formData.name)}%20(No.%20Tiket:%20${ticketId})%20ingin%20konsultasi%20lanjutan%20mengenai%20${encodeURIComponent(formData.subject)}.`}
                       variant="primary"
                       size="sm"
                       icon={PhoneCall}
                     >
-                      Kirim Lanjutan ke WhatsApp
+                      Lanjutkan ke WhatsApp Kami
                     </Button>
                     <button
                       type="button"
                       onClick={() => {
                         setIsSubmitted(false);
+                        setSelectedImages([]);
                         setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
                       }}
                       className="text-xs text-brand-muted hover:text-brand-text underline ml-2"
                     >
-                      Kirim Pesan Lain
+                      Kirim Formulir Baru
                     </button>
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                  {errors.form && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/40 text-red-400 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{errors.form}</span>
+                    </div>
+                  )}
+
                   {/* Name */}
                   <div>
                     <label htmlFor="name" className="block text-xs font-bold uppercase tracking-wider text-brand-text mb-2">
@@ -178,7 +236,7 @@ export default function Contact() {
 
                     <div>
                       <label htmlFor="phone" className="block text-xs font-bold uppercase tracking-wider text-brand-text mb-2">
-                        Nomor Telepon / WA (Opsional)
+                        Nomor Telepon / WhatsApp
                       </label>
                       <input
                         id="phone"
@@ -195,7 +253,7 @@ export default function Contact() {
                   {/* Subject */}
                   <div>
                     <label htmlFor="subject" className="block text-xs font-bold uppercase tracking-wider text-brand-text mb-2">
-                      Subjek Layanan <span className="text-brand-orange">*</span>
+                      Subjek Layanan / Jenis Mobil <span className="text-brand-orange">*</span>
                     </label>
                     <input
                       id="subject"
@@ -203,7 +261,7 @@ export default function Contact() {
                       type="text"
                       value={formData.subject}
                       onChange={handleChange}
-                      placeholder="Contoh: Perbaikan Bumper Depan & Cat Ulang Kap Mesin"
+                      placeholder="Contoh: Toyota Fortuner - Perbaikan Bumper Depan & Cat Ulang Kap Mesin"
                       className={`w-full px-4 py-3 bg-brand-card border text-sm text-brand-text placeholder-brand-muted/50 focus:outline-none focus:ring-1 focus:ring-brand-orange transition-colors ${
                         errors.subject ? 'border-red-500' : 'border-brand-border focus:border-brand-orange'
                       }`}
@@ -224,10 +282,10 @@ export default function Contact() {
                     <textarea
                       id="message"
                       name="message"
-                      rows={5}
+                      rows={4}
                       value={formData.message}
                       onChange={handleChange}
-                      placeholder="Jelaskan jenis kendaraan, panel yang mengalami kerusakan, dan kondisi cat..."
+                      placeholder="Jelaskan bagian panel yang penyok, baret dalam, kondisi cat, atau riwayat tabrakan..."
                       className={`w-full px-4 py-3 bg-brand-card border text-sm text-brand-text placeholder-brand-muted/50 focus:outline-none focus:ring-1 focus:ring-brand-orange transition-colors resize-none ${
                         errors.message ? 'border-red-500' : 'border-brand-border focus:border-brand-orange'
                       }`}
@@ -240,19 +298,72 @@ export default function Contact() {
                     )}
                   </div>
 
-                  {/* Disclaimer banner */}
-                  <div className="p-3.5 bg-brand-card border border-brand-border/80 text-[11px] text-brand-muted">
-                    <span className="font-bold text-brand-text">Catatan Demo:</span> Formulir ini beroperasi pada sisi antarmuka frontend untuk validasi data input. Estimasi biaya akhir diberikan setelah inspeksi fisik kendaraan di workshop.
+                  {/* Upload Foto Kerusakan (Image Upload Preview - Backend Ready) */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-brand-text mb-2">
+                      Foto Kerusakan Bodi Mobil (Opsional, Maks 4 Foto)
+                    </label>
+                    <div className="border border-dashed border-brand-border hover:border-brand-orange/60 p-4 bg-brand-card text-center transition-colors">
+                      <input
+                        type="file"
+                        id="car-photos"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                      <label htmlFor="car-photos" className="cursor-pointer flex flex-col items-center justify-center gap-2">
+                        <UploadCloud className="w-7 h-7 text-brand-orange" />
+                        <span className="text-xs font-semibold text-brand-text">
+                          Klik untuk Unggah Foto Mobil
+                        </span>
+                        <span className="text-[11px] text-brand-muted">
+                          Format JPG, PNG, WEBP (Kamera ponsel / galeri)
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Preview Grid */}
+                    {selectedImages.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                        {selectedImages.map((img, idx) => (
+                          <div key={idx} className="relative group border border-brand-border aspect-square bg-brand-surface overflow-hidden">
+                            <img
+                              src={img.preview}
+                              alt={`Kerusakan ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(idx)}
+                              className="absolute top-1 right-1 p-1 bg-brand-dark/80 text-white rounded-full hover:bg-red-600 transition-colors"
+                              aria-label="Hapus foto"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="absolute bottom-1 left-1 right-1 text-[9px] bg-brand-dark/80 text-brand-muted px-1 truncate text-center">
+                              {img.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <Button type="submit" size="md" icon={Send} className="w-full">
-                    Kirim Formulir Konsultasi
+                  <Button
+                    type="submit"
+                    size="md"
+                    disabled={isLoading}
+                    icon={isLoading ? Loader2 : Send}
+                    className="w-full"
+                  >
+                    {isLoading ? 'Mengirim Data...' : 'Kirim Formulir Konsultasi'}
                   </Button>
                 </form>
               )}
             </div>
 
-            {/* Right Column: Contact Details & Map Placeholder */}
+            {/* Right Column: Contact Details & Google Maps */}
             <div className="lg:col-span-5 space-y-8">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-brand-orange">
