@@ -9,6 +9,7 @@ import Services from './pages/Services';
 import OurWork from './pages/OurWork';
 import Contact from './pages/Contact';
 import NotFound from './pages/NotFound';
+import ChatbotWidget from './components/ChatbotWidget';
 import { ThemeProvider } from './context/ThemeContext';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
             </Routes>
           </main>
           <Footer />
+          <ChatbotWidget />
         </div>
       </Router>
     </ThemeProvider>
